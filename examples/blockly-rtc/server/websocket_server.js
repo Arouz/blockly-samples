@@ -28,7 +28,8 @@ const EventsHandlers = require('./websocket/events_handlers');
 const UsersHandlers = require('./websocket/users_handlers');
 
 const WS_PORT = 3001;
- 
+const Rooms = {};
+
 const server = http.createServer(function(request, response) {
   response.writeHead(404);
   response.end();
@@ -50,12 +51,23 @@ io.on('connection', (user) => {
  * @private
  */
 async function onConnect_(user) {
-  user.on('connectUser', async (workspaceId, callback) => {
+  user.on('connectUser', async (workspaceId, pid, callback) => {
+    if (pid != null && pid != undefined) {
+        if (!isRoomExists(pid)) {
+          createRoom(pid);
+        }
+        addUserToRoom(user, pid);
+    } else {
+      console.log(`no room id provided`);
+    }
     await UsersHandlers.connectUserHandler(user, workspaceId, callback);
   });
 
   user.on('disconnect', async () => {
     await UsersHandlers.disconnectUserHandler(user.workspaceId, () => {
+      if (getUserRoom(user) != null) {
+        removeUserFromRoom(user, getUserRoom(user));
+      }
       io.emit('disconnectUser', user.workspaceId);
     });
   });
@@ -84,3 +96,52 @@ async function onConnect_(user) {
     await EventsHandlers.getSnapshotHandler(callback);
   });
 };
+
+// Room management
+
+const rooms = {};
+function createRoom(roomName) {
+    if (rooms[roomName]) {
+        return false;
+    }
+    rooms[roomName] = {
+        roomName: roomName,
+        users: [],
+    };
+    return true;
+}
+
+function isRoomExists(roomName) {
+    return rooms[roomName] ? true : false;
+}
+
+function addUserToRoom(user, roomName) {
+    if (!isRoomExists(roomName)) {
+        return false;
+    }
+    rooms[roomName].users.push(user);
+
+    console.log(`${user.id} connected to room ${roomName}`);
+    return true;
+}
+
+function removeUserFromRoom(user, roomName) {
+    if (!isRoomExists(roomName)) {
+        return false;
+    }
+    const index = rooms[roomName].users.indexOf(user);
+    if (index > -1) {
+        rooms[roomName].users.splice(index, 1);
+    }
+    console.log(`${user.id} disconnected from room ${roomName}`);
+    return true;
+}
+
+function getUserRoom(user) {
+    for (const room in rooms) {
+        if (rooms[room].users.indexOf(user) > -1) {
+            return room;
+        }
+    }
+    return null;
+}

@@ -83,11 +83,25 @@ export async function getBroadcastPositionUpdates(callback) {
  */
 export async function connectUser(workspaceId) {
   return new Promise((resolve, reject) => {
-    socket.emit('connectUser', workspaceId, ()=> {
+    socket.emit('connectUser', workspaceId, $_GET("pid"), ()=> {
       resolve();
     });  
   });
 };
+
+function $_GET(param) {
+  var vars = {};
+  window.location.href.replace(location.hash, '').replace(
+      /[?&]+([^=&]+)=?([^&]*)?/gi, // regexp
+      function (m, key, value) { // callback
+          vars[key] = value !== undefined ? value : '';
+      }
+  );
+  if (param) {
+      return vars[param] ? vars[param] : null;
+  }
+  return vars;
+}
 
 /**
  * Listen for user disconnects broadcast by the server.
