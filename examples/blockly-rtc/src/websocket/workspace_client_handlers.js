@@ -35,7 +35,7 @@ const socket = io();
  */
 export async function getSnapshot() {
   return new Promise((resolve, reject) => {
-    socket.emit('getSnapshot', (snapshot) => {
+    socket.emit('getSnapshot', RoomID, (snapshot) => {
       snapshot.xml = Blockly.Xml.textToDom(snapshot.xml);
       resolve(snapshot);
     });
@@ -51,7 +51,7 @@ export async function getSnapshot() {
  */
 export async function getEvents(serverId) {
   return new Promise((resolve, reject) => {
-    socket.emit('getEvents', serverId, (entries) => {
+    socket.emit('getEvents', serverId, RoomID, (entries) => {
       entries.forEach((entry) => {
         entry.events = entry.events.map((entry) => {
           return Blockly.Events.fromJson(entry, Blockly.getMainWorkspace());
@@ -75,7 +75,7 @@ export async function writeEvents(entry) {
     events: entry.events.map((event) => event.toJson())
   };
   return new Promise((resolve, reject) => {
-    socket.emit('addEvents', entryJson, () => {
+    socket.emit('addEvents', entryJson, RoomID, () => {
       resolve();
     });
   });
@@ -98,3 +98,20 @@ export function getBroadcast(callback) {
     callback(entries);
   });
 };
+
+
+function $_GET(param) {
+  var vars = {};
+  window.location.href.replace(location.hash, '').replace(
+      /[?&]+([^=&]+)=?([^&]*)?/gi, // regexp
+      function (m, key, value) { // callback
+          vars[key] = value !== undefined ? value : '';
+      }
+  );
+  if (param) {
+      return vars[param] ? vars[param] : null;
+  }
+  return vars;
+}
+
+const RoomID = $_GET('rid');

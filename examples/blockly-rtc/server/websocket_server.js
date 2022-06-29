@@ -51,16 +51,16 @@ io.on('connection', (user) => {
  * @private
  */
 async function onConnect_(user) {
-  user.on('connectUser', async (workspaceId, pid, callback) => {
-    if (pid != null && pid != undefined) {
-        if (!isRoomExists(pid)) {
-          createRoom(pid);
+  user.on('connectUser', async (workspaceId, rid = null, callback) => {
+    if (rid != null && rid != undefined) {
+        if (!isRoomExists(rid)) {
+          createRoom(rid);
         }
-        addUserToRoom(user, pid);
+        addUserToRoom(user, rid);
     } else {
       console.log(`no room id provided`);
     }
-    await UsersHandlers.connectUserHandler(user, workspaceId, callback);
+    await UsersHandlers.connectUserHandler(user, workspaceId, rid, callback);
   });
 
   user.on('disconnect', async () => {
@@ -72,33 +72,33 @@ async function onConnect_(user) {
     });
   });
 
-  user.on('addEvents', async (entry, callback) => {
-    await EventsHandlers.addEventsHandler(entry, (serverId) => {
+  user.on('addEvents', async (entry, rid = null, callback) => {
+    await EventsHandlers.addEventsHandler(entry, rid, (serverId) => {
       entry.serverId = serverId;
       io.emit('broadcastEvents', [entry]);
       callback(serverId);
     });
   });
 
-  user.on('getEvents', async (serverId, callback) => {
-    await EventsHandlers.getEventsHandler(serverId, callback);
+  user.on('getEvents', async (serverId, rid = null, callback) => {
+    console.log(`getEvents: ${rid}`);
+    await EventsHandlers.getEventsHandler(serverId, rid, callback);
   });
 
-  user.on('sendPositionUpdate', async (positionUpdate, callback) => {
-    await UsersHandlers.updatePositionHandler(user, positionUpdate, callback);
+  user.on('sendPositionUpdate', async (positionUpdate, rid = null, callback) => {
+    await UsersHandlers.updatePositionHandler(user, positionUpdate, rid, callback);
   });
 
-  user.on('getPositionUpdates', async (workspaceId, callback) => {
-    await UsersHandlers.getPositionUpdatesHandler(workspaceId, callback);
+  user.on('getPositionUpdates', async (workspaceId, rid = null,  callback) => {
+    await UsersHandlers.getPositionUpdatesHandler(workspaceId, rid, callback);
   });
 
-  user.on('getSnapshot', async (callback) => {
-    await EventsHandlers.getSnapshotHandler(callback);
+  user.on('getSnapshot', async (rid = null, callback) => {
+    await EventsHandlers.getSnapshotHandler(rid, callback);
   });
 };
 
 // Room management
-
 const rooms = {};
 function createRoom(roomName) {
     if (rooms[roomName]) {

@@ -42,9 +42,10 @@ class Database {
    * given serverId.
    * @public
    */
-  query(serverId) {
+  query(serverId, rid = null) {
+    console.log(`query, serverId = ${serverId} - rId = ${rid}`);
     return new Promise ((resolve, reject) => {
-      this.db.all(`SELECT * from eventsdb WHERE serverId > ${serverId};`,
+      this.db.all(`SELECT * from eventsdb WHERE serverId > ${serverId} AND roomId = ${rid};`,
           (err, entries) => {
         if (err) {
           console.error(err.message);
@@ -68,13 +69,14 @@ class Database {
    * the database.
    * @public
    */
-  async addToServer(entry) {
+  async addToServer(entry, rid = null) {
+    console.log(`addToServer, entry = ${JSON.stringify(entry)}, rid = ${rid}`);
     return new Promise(async (resolve, reject) => {
-      const lastEntryNumber = await this.getLastEntryNumber_(entry.workspaceId);
+      const lastEntryNumber = await this.getLastEntryNumber_(entry.workspaceId, rid);
       if (entry.entryNumber > lastEntryNumber) {
         try {
-          const serverId = await this.runInsertQuery_(entry);
-          await this.updateLastEntryNumber_(entry.workspaceId, entry.entryNumber);
+          const serverId = await this.runInsertQuery_(entry, rid);
+          await this.updateLastEntryNumber_(entry.workspaceId, entry.entryNumber, rid);
           resolve(serverId);
         } catch {
           reject('Failed to write to the database');
@@ -94,12 +96,14 @@ class Database {
    * write succeeded.
    * @private
    */
-  runInsertQuery_(entry) {
+  runInsertQuery_(entry, rid) {
+    console.log('runInsertQuery_');
+    console.log(`entry = ${JSON.stringify(entry)}`);
     return new Promise((resolve, reject) => {
       this.db.serialize(() => {
         this.db.run(`INSERT INTO eventsdb
-            (events, workspaceId, entryNumber) VALUES(?,?,?)`,
-            [JSON.stringify(entry.events), entry.workspaceId, entry.entryNumber],
+            (events, workspaceId, entryNumber, roomId) VALUES(?,?,?,?)`,
+            [JSON.stringify(entry.events), entry.workspaceId, entry.entryNumber, rid],
             (err) => {
           if (err) {
             console.error(err.message);
@@ -125,11 +129,12 @@ class Database {
    * @return {!Promise} Promise object represents the success of the update.
    * @private
    */
-  updateLastEntryNumber_(workspaceId, entryNumber) {
+  updateLastEntryNumber_(workspaceId, entryNumber, rid = null) {
+    console.log('updateLastEntryNumber : ' + rid);
     return new Promise((resolve, reject) => {
       this.db.run(`UPDATE users SET lastEntryNumber = ?
-          WHERE workspaceId = ?;`,
-          [entryNumber, workspaceId],
+          WHERE workspaceId = ? AND roomId = ?;`,
+          [entryNumber, workspaceId, rid],
           async (err) => {
         if (err) {
           console.error(err.message);
@@ -147,28 +152,31 @@ class Database {
    * entry by the user.
    * @private
    */
-  getLastEntryNumber_(workspaceId) {
+  getLastEntryNumber_(workspaceId, rid = null) {
+    console.log('getLastEntryNumber_');
     return new Promise((resolve, reject) => {
       this.db.serialize(() => {
 
         // Ensure user is in the database, otherwise add it.
         this.db.all(
             `SELECT * from users
-            WHERE (EXISTS (SELECT 1 from users WHERE workspaceId == ?));`,
-            [workspaceId],
+            WHERE (EXISTS (SELECT 1 from users WHERE workspaceId == ?)) AND roomId = ?;`,
+            [workspaceId, rid],
             (err, entries) => {
           if (err) {
             console.error(err.message);
             reject('Failed to get last entry number.');
           } else if (entries.length == 0) {
-            this.db.run(`INSERT INTO users(workspaceId, lastEntryNumber)
-                VALUES(?, -1)`, [workspaceId]);
+            console.log('User not in database, adding.');
+            console.log("rid = " + rid);
+            this.db.run(`INSERT INTO users(workspaceId, lastEntryNumber, roomId)
+                VALUES(?, -1, ?)`, [workspaceId, rid]);
           };
         });
 
         this.db.each(
-            `SELECT lastEntryNumber from users WHERE workspaceId = ?;`,
-            [workspaceId],
+            `SELECT lastEntryNumber from users WHERE workspaceId = ? AND roomId = ?;`,
+            [workspaceId, rid],
             (err, result) => {
           if (err) {
             console.error(err.message);
@@ -188,14 +196,15 @@ class Database {
    * @return {!Promise} Promise object with an array of positionUpdate objects.
    * @public
    */
-  getPositionUpdates(workspaceId) {
+  getPositionUpdates(workspaceId, rid = null) {
+    console.log('getPositionUpdates');
     return new Promise((resolve, reject) => {
       const sql = workspaceId ? 
           `SELECT workspaceId, position from users
           WHERE
           (EXISTS (SELECT 1 from users WHERE workspaceId == ${workspaceId}))
           AND workspaceId = ${workspaceId};` :
-          `SELECT workspaceId, position from users;`;
+          `SELECT workspaceId, position from users WHERE roomId = ${rid};`;
       this.db.all(sql, (err, positionUpdates) => {
         if (err) {
           console.error(err.message);
@@ -217,16 +226,18 @@ class Database {
    * @return {!Promise} Promise object represents the success of the update.
    * @public
    */
-  updatePosition(positionUpdate) {
+  updatePosition(positionUpdate, rid = null) {
+    console.log('updatePosition');
     return new Promise((resolve, reject) => {
       this.db.run(
-          `INSERT INTO users(workspaceId, lastEntryNumber, position)
-          VALUES(?, -1, ?)
+          `INSERT INTO users(workspaceId, lastEntryNumber, position, roomId)
+          VALUES(?, -1, ?, ?)
           ON CONFLICT(workspaceId)
           DO UPDATE SET position = ?`,
           [
             positionUpdate.workspaceId,
             JSON.stringify(positionUpdate.position),
+            rid,
             JSON.stringify(positionUpdate.position)
           ],
           (err) => {
@@ -246,10 +257,11 @@ class Database {
    * @return {!Promise} Promise object represents the success of the deletion.
    * @public
    */
-  deleteUser(workspaceId) {
+  deleteUser(workspaceId, rid = null) {
+    console.log('deleteUser');
     return new Promise((resolve, reject) => {
       this.db.run(
-          `DELETE FROM users WHERE workspaceId = '${workspaceId}';`,
+          `DELETE FROM users WHERE workspaceId = '${workspaceId}' AND roomId = ${rid};`,
           (err) => {
         if (err) {
           console.error(err.message);

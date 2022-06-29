@@ -35,8 +35,10 @@ const database = require('../Database');
  * receive acknowledgement of the success of the write.
  * @private
  */
-async function updatePositionHandler(user, positionUpdate, callback) {
-  await database.updatePosition(positionUpdate);
+async function updatePositionHandler(user, positionUpdate, rid = null, callback) {
+  console.log("updatePositionHandler : " + rid);
+  console.log("updatePositionHandler : " + callback);
+  await database.updatePosition(positionUpdate, rid);
   callback();
   user.broadcast.emit('broadcastPosition', [positionUpdate]);
 };
@@ -49,8 +51,8 @@ async function updatePositionHandler(user, positionUpdate, callback) {
  * receive the PositionUpdates upon success of the query.
  * @private
  */
-async function getPositionUpdatesHandler(workspaceId, callback) {
-  const positionUpdates = await database.getPositionUpdates(workspaceId);
+async function getPositionUpdatesHandler(workspaceId, rid = null, callback) {
+  const positionUpdates = await database.getPositionUpdates(workspaceId, rid);
   callback(positionUpdates);
 };
 
@@ -63,7 +65,8 @@ async function getPositionUpdatesHandler(workspaceId, callback) {
  * receive acknowledgement of the success of the connection.
  * @public
  */
-async function connectUserHandler(user, workspaceId, callback) {
+async function connectUserHandler(user, workspaceId, rid = null, callback) {
+  console.log(rid + " : connectUserHandler");
   user.workspaceId = workspaceId;
   const positionUpdate = {
     workspaceId: workspaceId,
@@ -73,7 +76,7 @@ async function connectUserHandler(user, workspaceId, callback) {
       fieldName: null
     },
   };
-  await updatePositionHandler(user, positionUpdate, callback);
+  await updatePositionHandler(user, positionUpdate, rid, callback);
 };
 
 /**
@@ -83,8 +86,8 @@ async function connectUserHandler(user, workspaceId, callback) {
  * the connected users.
  * @public
  */
-async function disconnectUserHandler(workspaceId, callback) {
-  await database.deleteUser(workspaceId);
+async function disconnectUserHandler(workspaceId, callback, rid = null) {
+  await database.deleteUser(workspaceId, rid);
   callback();
 };
 

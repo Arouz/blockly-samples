@@ -29,7 +29,9 @@ const db = new sqlite3.Database('./eventsdb.sqlite', (err) => {
   console.log('successful connection');
   const eventsDbSql = `CREATE TABLE IF NOT EXISTS eventsdb(
       serverId INTEGER PRIMARY KEY,
-      workspaceId TEXT, entryNumber INTEGER, events BLOB);`;
+      roomId TEXT,
+      workspaceId TEXT, 
+      entryNumber INTEGER, events BLOB);`;
   db.run(eventsDbSql, function(err) {
     if (err) {
       return console.error(err.message);
@@ -37,6 +39,7 @@ const db = new sqlite3.Database('./eventsdb.sqlite', (err) => {
   });
   const userTableSql = `CREATE TABLE IF NOT EXISTS users(
       workspaceId TEXT UNIQUE,
+      roomId TEXT,
       lastEntryNumber INTEGER,
       position TEXT);`
   db.run(userTableSql, function(err) {

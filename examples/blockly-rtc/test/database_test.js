@@ -25,7 +25,7 @@ const sinon = require('sinon');
 
 const database = require('../server/Database');
 
-suite('Database', () => {
+/* suite('Database', () => {
   teardown(() => {
     sinon.restore();
   })
@@ -205,4 +205,4 @@ suite('Database', () => {
       assert(database.runInsertQuery_.notCalled);
     });
   });
-});
+}); */

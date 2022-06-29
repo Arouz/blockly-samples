@@ -32,8 +32,8 @@ const database = require('../Database');
  * receive acknowledgement of the success of the write.
  * @private
  */
-async function getEventsHandler(serverId, callback) {
-  const entries = await database.query(serverId);
+async function getEventsHandler(serverId, rid = null, callback) {
+  const entries = await database.query(serverId, rid);
   callback(entries);
 };
 
@@ -44,8 +44,8 @@ async function getEventsHandler(serverId, callback) {
  * the event.
  * @private
  */
-async function addEventsHandler(entry, callback) {
-  const serverId = await database.addToServer(entry);
+async function addEventsHandler(entry, rid = null, callback) {
+  const serverId = await database.addToServer(entry, rid);
   callback(serverId);
 };
 
@@ -55,7 +55,8 @@ async function addEventsHandler(entry, callback) {
  * recieve the snapshot.
  * @public
  */
-async function getSnapshotHandler(callback) {
+async function getSnapshotHandler(rid, callback) {
+  console.log("callback : " + rid);
   const snapshot = await database.getSnapshot();
   callback(snapshot);
 };

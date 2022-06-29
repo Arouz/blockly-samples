@@ -22,7 +22,6 @@
  * the server.
  * @author navil@google.com (Navil Perez)
  */
-
 import io from 'socket.io-client';
 import Position from '../Position';
 
@@ -37,7 +36,7 @@ const socket = io();
  */
 export async function getPositionUpdates(workspaceId) {
   return new Promise((resolve, reject) => {
-    socket.emit('getPositionUpdates', workspaceId, (positionUpdates) => {
+    socket.emit('getPositionUpdates', workspaceId, RoomID, (positionUpdates) => {
       positionUpdates.forEach((positionUpdate) => {
         positionUpdate.position = Position.fromJson(positionUpdate.position);
       });
@@ -55,7 +54,7 @@ export async function getPositionUpdates(workspaceId) {
  */
 export async function sendPositionUpdate(positionUpdate) {
   return new Promise((resolve, reject) => {
-    socket.emit('sendPositionUpdate', positionUpdate, () => {
+    socket.emit('sendPositionUpdate', positionUpdate, RoomID, () => {
       resolve();
     });
   });
@@ -83,11 +82,24 @@ export async function getBroadcastPositionUpdates(callback) {
  */
 export async function connectUser(workspaceId) {
   return new Promise((resolve, reject) => {
-    socket.emit('connectUser', workspaceId, $_GET("pid"), ()=> {
+    socket.emit('connectUser', workspaceId, RoomID, ()=> {
       resolve();
     });  
   });
 };
+
+/**
+ * Listen for user disconnects broadcast by the server.
+ * @param {!Function} callback The callback handler that passes the
+ * workspaceId of the disconnected user to the UserDataManager.
+ * @public
+ */
+export function getUserDisconnects(callback) {
+  socket.on('disconnectUser', async (workspaceId)=> {
+    await callback(workspaceId);
+  });
+};
+
 
 function $_GET(param) {
   var vars = {};
@@ -103,14 +115,4 @@ function $_GET(param) {
   return vars;
 }
 
-/**
- * Listen for user disconnects broadcast by the server.
- * @param {!Function} callback The callback handler that passes the
- * workspaceId of the disconnected user to the UserDataManager.
- * @public
- */
-export function getUserDisconnects(callback) {
-  socket.on('disconnectUser', async (workspaceId)=> {
-    await callback(workspaceId);
-  });
-};
+const RoomID = $_GET('rid');
