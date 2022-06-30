@@ -75,7 +75,7 @@ async function onConnect_(user) {
   user.on('addEvents', async (entry, rid = null, callback) => {
     await EventsHandlers.addEventsHandler(entry, rid, (serverId) => {
       entry.serverId = serverId;
-      io.emit('broadcastEvents', [entry]);
+      io.emit('broadcastEvents', rid, [entry]);
       callback(serverId);
     });
   });

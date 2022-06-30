@@ -67,11 +67,13 @@ export async function sendPositionUpdate(positionUpdate) {
  * @public
  */
 export async function getBroadcastPositionUpdates(callback) {
-  socket.on('broadcastPosition', async (positionUpdates)=> {
-    positionUpdates.forEach((positionUpdate) => {
-      positionUpdate.position = Position.fromJson(positionUpdate.position);
-    });
-    await callback(positionUpdates);
+  socket.on('broadcastPosition', async (rid, positionUpdates) => {
+    if (rid == RoomID) {
+      positionUpdates.forEach((positionUpdate) => {
+        positionUpdate.position = Position.fromJson(positionUpdate.position);
+      });
+      await callback(positionUpdates);
+    }
   });
 };
 

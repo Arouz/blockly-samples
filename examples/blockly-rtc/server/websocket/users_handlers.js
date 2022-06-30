@@ -37,10 +37,9 @@ const database = require('../Database');
  */
 async function updatePositionHandler(user, positionUpdate, rid = null, callback) {
   console.log("updatePositionHandler : " + rid);
-  console.log("updatePositionHandler : " + callback);
   await database.updatePosition(positionUpdate, rid);
   callback();
-  user.broadcast.emit('broadcastPosition', [positionUpdate]);
+  user.broadcast.emit('broadcastPosition', [rid, positionUpdate]);
 };
 
 /**
@@ -86,8 +85,8 @@ async function connectUserHandler(user, workspaceId, rid = null, callback) {
  * the connected users.
  * @public
  */
-async function disconnectUserHandler(workspaceId, callback, rid = null) {
-  await database.deleteUser(workspaceId, rid);
+async function disconnectUserHandler(workspaceId, callback) {
+  await database.deleteUser(workspaceId);
   callback();
 };
 

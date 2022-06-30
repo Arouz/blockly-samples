@@ -56,8 +56,8 @@ async function addEventsHandler(entry, rid = null, callback) {
  * @public
  */
 async function getSnapshotHandler(rid, callback) {
-  console.log("callback : " + rid);
-  const snapshot = await database.getSnapshot();
+  console.log("getSnapshotHandler : " + rid);
+  const snapshot = await database.getSnapshot(rid);
   callback(snapshot);
 };
 

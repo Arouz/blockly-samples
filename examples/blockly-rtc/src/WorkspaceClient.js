@@ -194,12 +194,16 @@ export default class WorkspaceClient {
    * @private
    */
   async addServerEvents_(newServerEvents) {
+    console.log('newServerEvents', newServerEvents);
     if (newServerEvents.length == 0) {
       return;
     };
+
+
     if (newServerEvents[0].serverId != this.lastSync + 1) {
       newServerEvents = await this.queryDatabase_();
     };
+
     this.lastSync = newServerEvents[newServerEvents.length - 1].serverId;
     this.serverEvents.push.apply(this.serverEvents, newServerEvents);
     this.updateWorkspace_();

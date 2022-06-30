@@ -89,13 +89,16 @@ export async function writeEvents(entry) {
  * @public
  */
 export function getBroadcast(callback) {
-  socket.on('broadcastEvents', (entries)=> {
-    entries.forEach((entry) => {
-      entry.events = entry.events.map((entry) => {
-        return Blockly.Events.fromJson(entry, Blockly.getMainWorkspace());
+  socket.on('broadcastEvents', (rid, entries)=> {
+    console.log("broadcastEvents", rid)
+    if (rid == RoomID) {
+      entries.forEach((entry) => {
+        entry.events = entry.events.map((entry) => {
+          return Blockly.Events.fromJson(entry, Blockly.getMainWorkspace());
+        });
       });
-    });
-    callback(entries);
+      callback(entries);
+    }
   });
 };
 

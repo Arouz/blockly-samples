@@ -42,7 +42,7 @@ class Database {
    * given serverId.
    * @public
    */
-  query(serverId, rid = null) {
+  query(serverId, rid) {
     console.log(`query, serverId = ${serverId} - rId = ${rid}`);
     return new Promise ((resolve, reject) => {
       this.db.all(`SELECT * from eventsdb WHERE serverId > ${serverId} AND roomId = ${rid};`,
@@ -69,7 +69,7 @@ class Database {
    * the database.
    * @public
    */
-  async addToServer(entry, rid = null) {
+  async addToServer(entry, rid) {
     console.log(`addToServer, entry = ${JSON.stringify(entry)}, rid = ${rid}`);
     return new Promise(async (resolve, reject) => {
       const lastEntryNumber = await this.getLastEntryNumber_(entry.workspaceId, rid);
@@ -115,7 +115,7 @@ class Database {
             console.error(err.message);
             reject('Failed to retrieve serverId.');
           };
-          resolve(lastServerId.serverId);
+            resolve(lastServerId.serverId);
         });
       });
     });
@@ -167,7 +167,6 @@ class Database {
             console.error(err.message);
             reject('Failed to get last entry number.');
           } else if (entries.length == 0) {
-            console.log('User not in database, adding.');
             console.log("rid = " + rid);
             this.db.run(`INSERT INTO users(workspaceId, lastEntryNumber, roomId)
                 VALUES(?, -1, ?)`, [workspaceId, rid]);
@@ -196,20 +195,19 @@ class Database {
    * @return {!Promise} Promise object with an array of positionUpdate objects.
    * @public
    */
-  getPositionUpdates(workspaceId, rid = null) {
-    console.log('getPositionUpdates');
+  getPositionUpdates(workspaceId, rid) {
+    console.log('getPositionUpdates : ' + rid);
     return new Promise((resolve, reject) => {
       const sql = workspaceId ? 
-          `SELECT workspaceId, position from users
-          WHERE
-          (EXISTS (SELECT 1 from users WHERE workspaceId == ${workspaceId}))
-          AND workspaceId = ${workspaceId};` :
+          `SELECT workspaceId, position from users WHERE (EXISTS (SELECT 1 from users WHERE workspaceId == ${workspaceId}))
+          AND workspaceId = ${workspaceId} and roomId = ${rid};` :
           `SELECT workspaceId, position from users WHERE roomId = ${rid};`;
       this.db.all(sql, (err, positionUpdates) => {
         if (err) {
           console.error(err.message);
           reject('Failed to get positions.');
         } else {
+          console.log(`positionUpdates = ${JSON.stringify(positionUpdates)}`);
           positionUpdates.forEach((positionUpdate) => {
             positionUpdate.position = JSON.parse(positionUpdate.position);
           });
@@ -226,19 +224,20 @@ class Database {
    * @return {!Promise} Promise object represents the success of the update.
    * @public
    */
-  updatePosition(positionUpdate, rid = null) {
-    console.log('updatePosition');
+  updatePosition(positionUpdate, rid) {
+    console.log('updatePosition : ' + rid);
     return new Promise((resolve, reject) => {
       this.db.run(
           `INSERT INTO users(workspaceId, lastEntryNumber, position, roomId)
           VALUES(?, -1, ?, ?)
           ON CONFLICT(workspaceId)
-          DO UPDATE SET position = ?`,
+          DO UPDATE SET position = ? WHERE roomId = ?;`,
           [
             positionUpdate.workspaceId,
             JSON.stringify(positionUpdate.position),
             rid,
-            JSON.stringify(positionUpdate.position)
+            JSON.stringify(positionUpdate.position),
+            rid,
           ],
           (err) => {
         if (err) {
@@ -257,11 +256,11 @@ class Database {
    * @return {!Promise} Promise object represents the success of the deletion.
    * @public
    */
-  deleteUser(workspaceId, rid = null) {
+  deleteUser(workspaceId) {
     console.log('deleteUser');
     return new Promise((resolve, reject) => {
       this.db.run(
-          `DELETE FROM users WHERE workspaceId = '${workspaceId}' AND roomId = ${rid};`,
+          `DELETE FROM users WHERE workspaceId = '${workspaceId}';`,
           (err) => {
         if (err) {
           console.error(err.message);
@@ -277,8 +276,8 @@ class Database {
    * @return {!Snapshot} The latest snapshot of the workspace.
    * @public
    */
-  async getSnapshot() {
-    await this.updateSnapshot_();
+  async getSnapshot(rid) {
+    await this.updateSnapshot_(rid);
     return this.snapshot;
   };
 
@@ -288,19 +287,21 @@ class Database {
    * update.
    * @private
    */
-  updateSnapshot_() {
+  updateSnapshot_(rid) {
     return new Promise(async (resolve, reject) => {
-      const newEntries = await this.query(this.snapshot.serverId);
+      const newEntries = await this.query(this.snapshot.serverId, rid);
       if (newEntries.length == 0) {
         resolve();
         return;
       };
+
       // Load last stored snapshot of the workspace.
       const workspace = new Blocky.Workspace();
       if (this.snapshot.xml) {
         const xml = Blocky.Xml.textToDom(this.snapshot.xml);
         Blocky.Xml.domToWorkspace(xml, workspace);  
       };
+
       // Play events since the last time the snapshot was generated.
       newEntries.forEach((entry) => {
         entry.events.forEach((event) => {
@@ -308,6 +309,7 @@ class Database {
           blocklyEvent.run(true);
         });
       });
+
       // Store the new snapshot object.
       const newSnapshotXml = Blocky.Xml.workspaceToDom(workspace, false);
       const newSnapshotText = Blocky.Xml.domToText(newSnapshotXml);
